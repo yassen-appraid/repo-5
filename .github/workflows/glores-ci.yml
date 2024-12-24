@@ -1,0 +1,48 @@
+name: On PR Merge
+
+on: push
+
+jobs:
+  run-script-on-merge:
+    # if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout the workflow repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Clone repositories
+      run: |
+        mkdir workspace || echo "Dir Already Exists"
+        cd workspace
+        echo "Cloning repositories..."
+        git clone https://github.com/yassen-appraid/repo-1.git || echo "Failed to clone repo-1"
+        git clone https://github.com/yassen-appraid/repo-2.git || echo "Failed to clone repo-2"
+        git clone https://github.com/yassen-appraid/repo-3.git || echo "Failed to clone repo-3"
+        git clone https://github.com/yassen-appraid/repo-4.git || echo "Failed to clone repo-4"
+        git clone https://github.com/yassen-appraid/repo-5.git || echo "Failed to clone repo-5"
+        git clone https://github.com/yassen-appraid/glores.git || echo "Failed to clone glores"
+
+    - name: Install dependencies
+      run: |
+        echo "Installing dependencies..."
+        pwd
+        cd workspace/glores
+        python -m pip install --upgrade pip || echo "Failed to upgrade pip"
+        pip install -r requirements.txt || echo "Failed to install requirements"
+
+    - name: Execute Python script
+      run: |
+        echo "Executing Python script..."
+        cd workspace/glores
+        ./glores-update-cmd.sh
+    
+    - name: Cleaning if failed
+      if: failure()
+      run: |
+        test -d workspace && rm -rf workspace
