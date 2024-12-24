@@ -1,15 +1,23 @@
 name: On PR Merge
 
-on: push
+on:
+  pull_request:
+    types:
+      - closed  # Triggers when a PR is closed
+
+permissions:
+  contents: write
 
 jobs:
   run-script-on-merge:
-    # if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout the workflow repository
       uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -35,12 +43,31 @@ jobs:
         cd workspace/glores
         python -m pip install --upgrade pip || echo "Failed to upgrade pip"
         pip install -r requirements.txt || echo "Failed to install requirements"
+    
+    - name: Extract and Use Repository Name
+      run: |
+        REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+        echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
 
     - name: Execute Python script
       run: |
         echo "Executing Python script..."
-        cd workspace/glores
-        ./glores-update-cmd.sh
+        cd workspace
+        python glores/glores.py update --workspace $(pwd) --repo $(pwd)/"$REPO_NAME"
+    
+    - name: Update glores configuration file
+      env:
+        REPO_NAME: repo-1  # Replace with your repository name
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "Updating glores configuration file in repo $REPO_NAME"
+        cd workspace/"$REPO_NAME"
+        git config user.name "yassen-appraid"
+        git config user.email "ahmed.yassen@appraid-tech.com"
+        git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/yassen-appraid/$REPO_NAME.git
+        git add .
+        git commit -a -m "Updating glores configuration file"
+        git push origin HEAD
     
     - name: Cleaning if failed
       if: failure()
